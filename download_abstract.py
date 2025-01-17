@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 import random
 from tenacity import retry, stop_after_attempt, wait_exponential
+import argparse
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -190,5 +191,35 @@ def download_abstracts(input_file: str) -> Dict:
 
 # Usage example
 if __name__ == "__main__":
-    results = download_abstracts("ssrn_papers_jel_J14_20250117_175715.json")
-    print(f"Downloaded {len(results)} abstracts")
+    # Create argument parser
+    parser = argparse.ArgumentParser(
+        description="Download abstracts from SSRN papers",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    # Add arguments
+    parser.add_argument(
+        "input_file",
+        type=str,
+        help="Path to input JSON file containing paper information\n"
+        "Example: ssrn_papers_jel_J14_20250117_175715.json",
+    )
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Check if file exists
+    if not Path(args.input_file).exists():
+        print(f"Error: Input file '{args.input_file}' not found!")
+        parser.print_help()
+        exit(1)
+
+    # Run downloader
+    try:
+        results = download_abstracts(args.input_file)
+        print(f"\nDownload completed:")
+        print(f"- Successfully downloaded {len(results)} abstracts")
+        print(f"- Results saved to: {Path(args.input_file).stem}_with_abstracts.json")
+    except Exception as e:
+        print(f"\nError occurred: {str(e)}")
+        parser.print_help()

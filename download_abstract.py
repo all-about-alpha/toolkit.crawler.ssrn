@@ -13,6 +13,8 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+_existing_ids = set()
+
 
 class AbstractDownloader:
     def __init__(self, input_file: str):
@@ -116,6 +118,9 @@ class AbstractDownloader:
 
         for paper in retry_papers:
             try:
+                if paper["abstract_id"] in _existing_ids:
+                    logging.info(f"Skipping existing paper: {paper['title']}")
+                    continue
                 logging.info(f"Retrying paper: {paper['title']}")
                 result = self.download_abstract(paper, is_retry=True)
                 if result:
@@ -205,6 +210,15 @@ if __name__ == "__main__":
         "Example: ssrn_papers_jel_J14_20250117_175715.json",
     )
 
+    # optional arguments - resume
+    parser.add_argument(
+        "--resume",
+        "-r",
+        type=str,
+        help="Path to previous results file to resume downloading\n"
+        "Example: ssrn_papers_jel_J14_20250117_175715_with_abstracts.json",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -213,6 +227,17 @@ if __name__ == "__main__":
         print(f"Error: Input file '{args.input_file}' not found!")
         parser.print_help()
         exit(1)
+
+    # Load existing IDs from resume file if specified
+    _existing_ids = set()
+    if args.resume:
+        try:
+            with open(args.resume, "r", encoding="utf-8") as f:
+                _existing_ids = set(json.load(f).keys())
+        except FileNotFoundError:
+            print(f"Error: Resume file '{args.resume}' not found!")
+            parser.print_help()
+            exit(1)
 
     # Run downloader
     try:
